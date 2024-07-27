@@ -26,7 +26,6 @@ app.use(cookieParser());
 
 /* app.use("/", (req, res, next) => {
     if (req.path === "/") {
-        res.redirect("/api/tasks");
     } else {
         next();
     }
@@ -36,16 +35,13 @@ app.use("/appUsers/signup",require("./routes/appUsers/signup"));
 
 app.use("/appUsers/signin",require("./routes/appUsers/signIn"));
 
-app.use("/donors/register", require("./routes/donors/"));
+app.use("/donors/register", require("./routes/donors/register"));
 
 app.use("/confirm",require("./routes/EmailVarification"));
 
-app.use("/api/refresh",require("./routes/refresh"));
-app.use("/api/logout", require("./routes/logout"));
+
 
 app.use(authenticateUser);//jwt token to verify user
-app.use("/api/username",require("./routes/getUserName"));
-app.use("/api/tasks",require("./routes/api/tasksRoute"));
 
 app.use((req, res, next) =>{
     res.status(404).sendFile(path.join(__dirname,"views","404.html")); 
