@@ -1,3 +1,0 @@
-
-2024/05/26	11:44:32 	fd9e0f2b-1268-465e-8d19-7c4cf2cc8281	SyntaxError: Unexpected token } in JSON at position 50
-2024/05/26	16:02:46 	6fb3b09c-e080-47d9-a2b0-ca596e4fcd14	TypeError: list.include is not a function

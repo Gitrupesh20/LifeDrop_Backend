@@ -1,8 +1,9 @@
-const { handleNewDonor } = require("../../controllers/donorsControllers");
+const {
+  handleNewDonor,
+} = require("../../controllers/donorControllers/registerDonor");
 
 const router = require("express").Router();
 
+router.post("/", handleNewDonor);
 
-router.post("/",handleNewDonor);
-
-module.exports =  router;
+module.exports = router;
