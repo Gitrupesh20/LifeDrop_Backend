@@ -21,7 +21,7 @@ const sendVerificationEmail = async (user, token) => {
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
-    to: user.username, // Use user.username since you are using it as the email
+    to: user.username, 
     subject: "Email Verification",
     html: content({ name: user.firstName, verificationLink }),
   };
