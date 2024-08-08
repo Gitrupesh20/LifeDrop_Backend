@@ -1,110 +1,67 @@
 const bcrypt = require("bcrypt");
-const path = require("path");
-const fsPromise = require("fs").promises;
 const roles = require("../../config/roles");
-
+const User = require("../../model/Users");
+const Donor = require("../../model/Donor");
 const { sendVerificationEmail } = require("../../config/mailer");
 const { generateToken } = require("../appUsersControllers/registerUser");
-const donors = {
-  donor: require("../../model/donor.json"),
-  setDonor: function (donor) {
-    this.donor = donor;
-  },
-};
-const users = {
-  data: require("../../model/users.json"),
-  setUser: function (data) {
-    this.data = data;
-  },
-};
-const VerificationToken = {
-  data: require("../../model/verificationToken.json"),
-  setData: function (data) {
-    this.data = data;
-  },
-};
-
+const { v4: uuidv4 } = require("uuid");
 const handleNewDonor = async (req, res) => {
-  if (!req?.body) {
+  if (!req?.body)
     return res.status(400).json({ message: "req body should not be empty" });
-  }
-  console.log(req.body);
+
   const { appUserDTO, donorDTO } = req.body;
-  console.log(`app ${appUserDTO}`);
-  console.log(`donor ${donorDTO}`);
-  const { password, username } = appUserDTO;
+
+  const { password, username, firstName } = appUserDTO;
   try {
-    const isAppUserExist = users.data.find((obj) => obj.username === username);
+    const foundUser = await User.findOne({ username: username });
     //check for duplicate
-    console.log("isAppUserExist");
-    console.log(isAppUserExist);
-    const isDonorExist = donors.donor.find((obj) => obj.username === username);
+    const isDonorExist = await Donor.findOne({ user: foundUser?._id });
 
-    if (isDonorExist) {
+    if (isDonorExist)
       return res.status(409).json({ message: "user already exists" });
-    }
 
-    if (isAppUserExist) {
-      const match = await bcrypt.compare(password, isAppUserExist.password);
-      console.log(`user exits${match}`);
+    if (foundUser) {
+      const match = await bcrypt.compare(password, foundUser.password);
+
       if (!match) return res.status(401).json({ message: "Wrong Password" });
-    }
 
-    //encrypt password
-    console.log("password");
+      foundUser.role = { ...foundUser.role, donor: roles.donor };
+      await foundUser.save();
+      const DonorResult = await Donor.create({
+        ...donorDTO,
+        user: foundUser._id,
+        id: uuidv4(),
+      });
 
-    const hashedPwd = isAppUserExist
-      ? isAppUserExist.password
-      : await bcrypt.hash(password, 10);
-    console.log(hashedPwd);
-    const otherUser = users.data.filter((item) => item.username !== username);
-    const otherDonor = users.data.filter((item) => item.username !== username);
-
-    const currentUser = {
-      ...appUserDTO,
-      password: hashedPwd,
-      isVerified: isAppUserExist.isVerified,
-      role: { user: roles.user, donor: roles.donor },
-    };
-    const currentDonor = { ...donorDTO, username: username };
-
-    users.setUser([...otherUser, currentUser]);
-    donors.setDonor([...otherDonor, currentDonor]);
-
-    if (!isAppUserExist) {
+      if (!foundUser.isEmailVerified)
+        return res.status(209).json({ message: "Try again latter" });
+    } else {
       const token = generateToken();
-      await sendVerificationEmail(
-        { username, firstName: appUserDTO.firstName },
-        token
-      );
 
-      VerificationToken.setData([
-        ...VerificationToken.data,
-        { username: username, token: token },
-      ]);
+      //encrypt password
+      const hashedPwd = await bcrypt.hash(password, 10);
+      const user = await User.create({
+        ...appUserDTO,
+        password: hashedPwd,
+        verificationToken: token,
+        role: { donor: roles.donor },
+      });
 
-      await fsPromise.writeFile(
-        path.join(__dirname, "..", "..", "model", "verificationToken.json"),
-        JSON.stringify(VerificationToken.data)
-      );
+      const donor = await Donor.create({
+        user: user._id,
+        ...donorDTO,
+        id: uuidv4(),
+      });
+
+      await sendVerificationEmail({ username, firstName }, token);
+      console.log("email sended");
     }
 
-    await fsPromise.writeFile(
-      path.join(__dirname, "..", "..", "model", "users.json"),
-      JSON.stringify(users.data)
-    );
-    console.log(users.data);
-    console.log(donors.donor);
-
-    await fsPromise.writeFile(
-      path.join(__dirname, "..", "..", "model", "donor.json"),
-      JSON.stringify(donors.donor)
-    );
     res
       .status(200)
       .json({ message: `new user ${username} registered successfully` });
   } catch (err) {
-    console.error(err);
+    console.log(err);
     return res.status(500).json({ message: err.message });
   }
 };
