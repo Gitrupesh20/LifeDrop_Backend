@@ -21,11 +21,7 @@ const sendVerificationEmail = async (user, token) => {
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
-<<<<<<< HEAD
-    to: user.username, 
-=======
-    to: user.username,
->>>>>>> 2191475 (adding various functionality)
+    to: user.username, // Use user.username since you are using it as the email
     subject: "Email Verification",
     html: content({ name: user.firstName, verificationLink }),
   };
