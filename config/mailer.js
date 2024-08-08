@@ -1,5 +1,5 @@
 const nodemailer = require("nodemailer");
-const { content } = require("./emailTemplate");
+const { content, confirmMailTemplate } = require("./emailTemplate");
 require("dotenv").config();
 
 // Create transporter object
@@ -21,7 +21,7 @@ const sendVerificationEmail = async (user, token) => {
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
-    to: user.username, // Use user.username since you are using it as the email
+    to: user.username,
     subject: "Email Verification",
     html: content({ name: user.firstName, verificationLink }),
   };
@@ -41,6 +41,33 @@ const sendVerificationEmail = async (user, token) => {
   }
 };
 
+// create function that will send mail
+const sendBloodReqAcceptanceEmail = async (DonorDetails) => {
+  //console.log(DonorDetails);
+
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: DonorDetails.recipientEmail,
+    subject: "Blood Request Acceptance",
+    html: confirmMailTemplate(DonorDetails),
+  };
+
+  //console.log("EMAIL_USER:", process.env.EMAIL_USER);
+  //console.log("EMAIL_PASS:", process.env.EMAIL_PASS);
+
+  console.log("Attempting to send email");
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Email sent: ", info.response);
+    return;
+  } catch (error) {
+    console.error("Error in test email sending:", error);
+    throw error;
+  }
+};
+
 module.exports = {
   sendVerificationEmail,
+  sendBloodReqAcceptanceEmail,
 };

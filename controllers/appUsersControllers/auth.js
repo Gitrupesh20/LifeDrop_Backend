@@ -1,21 +1,7 @@
 const bcrypt = require("bcrypt");
-const path = require("path");
-const fsPromise = require("fs").promises;
+const Donor = require("../../model/Donor");
 const jwt = require("jsonwebtoken");
-const { v4: uuid } = require("uuid");
-
-const users = {
-  data: require("../../model/users.json"),
-  setUser: function (data) {
-    this.data = data;
-  },
-};
-const Donors = {
-  Donor: require("../../model/donor.json"),
-  setDonor: function (data) {
-    this.data = data;
-  },
-};
+const Users = require("../../model/Users");
 
 function calculateAge(dob) {
   const today = new Date();
@@ -32,54 +18,37 @@ function calculateAge(dob) {
 }
 
 const handleLogIn = async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    if (!username || !password) {
-      console.log(password);
-      return res.status(400).json({ message: "invalid logIn" });
-    }
-    console.log(password);
-    const foundUser = users.data.find((item) => item.username === username);
+  const { username, password } = req.body;
+  if (!username || !password)
+    return res.status(400).json({ message: "invalid logIn" });
 
-    if (!foundUser || !foundUser.isVerified) {
-      console.log(foundUser);
+  try {
+    const foundUser = await Users.findOne({ username: username }).exec();
+
+    if (!foundUser || !foundUser.isEmailVerified)
       return res.status(404).json({ message: "invalid Username" });
-    }
+
     //decode password
     const match = await bcrypt.compare(password, foundUser.password);
     //console.log(`match res ${match}`);
     if (match) {
       const roles = Object.values(foundUser.role);
       // create-jwt-accessToken
+
       const accessToken = jwt.sign(
         {
           username: foundUser.username,
           roles: roles,
+          userID: foundUser._id,
         },
         process.env.ACCESS_TOKEN,
         {
-          expiresIn: "40s",
+          expiresIn: "1d",
         }
       );
-      /*
-      const refreshToken = jwt.sign(
-                    {"username": foundUser.username, "userID" : foundUser.userID},
-                    process.env.REFRESH_TOKEN,
-                    {expiresIn:"1d"}
-                ); */
-      /*   const otherUser = users.data.filter(user=>user.username !== foundUser.username);
-                    const currentUser = {...foundUser, refreshToken};
-                    users.setUser([...otherUser,currentUser]);
-                    
-                    await fsPromises.writeFile(
-                        path.join(__dirname,"..","model","users.json"),
-                        JSON.stringify(users.data)
-                    ); 
-                */
-      console.log("log in ");
-      const donorDetails = Donors.Donor.find(
-        (donor) => donor.username === foundUser.username
-      );
+
+      const donorDetails = await Donor.findOne({ user: foundUser._id }).exec();
+
       const user = {
         name: foundUser.firstName + " " + foundUser.lastName,
         DOB: foundUser.dateOfBirth,
@@ -97,8 +66,9 @@ const handleLogIn = async (req, res) => {
           .filter((part) => part != null && part.trim() !== "")
           .join(" "),
         LDDs: donorDetails?.lastDonationDate,
+        AvalibilityStatus: donorDetails?.AvalibilityStatus,
       };
-      //console.log(user);
+      console.log("log in");
       res
         .status(200)
         .json({ message: "login successful", AccessToken: accessToken, user });
@@ -112,4 +82,4 @@ const handleLogIn = async (req, res) => {
   }
 };
 
-module.exports = { handleLogIn };
+module.exports = { handleLogIn, calculateAge };
